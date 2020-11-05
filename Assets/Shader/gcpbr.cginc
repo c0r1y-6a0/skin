@@ -19,6 +19,7 @@ float3 GC_PBR_FresnelSchlick(float cosTheta, float3 F0)
 float BlinnPhongNDF(float alpha_p, float cos)
 {
     const float PI = 3.14159265;
+    alpha_p = pow(8192, alpha_p);
     return (alpha_p + 2) / (2 * PI) * pow(cos, alpha_p);
 }
 
@@ -60,6 +61,15 @@ float ImplicitG(float3 n, float3 v, float3 l)
     return dot(n, l) * dot(n, v);
 }
 
+//CookTorrance geometry function
+float CTG(float3 n, float3 v, float3 h, float3 l)
+{
+    float nh = dot(n, h);
+    float vh = dot(v, h);
+    float val1 = min(1, (2 * nh * dot(n, v))/(vh));
+    return min(val1, (2 * nh * dot(n, l)) / (vh));
+}
+
 float3 GC_CookTorranceSpecular(float3 l, float3 v, float3 n, float3 F0, float alpha_b)
 {
     float3 h = normalize(l + v);
@@ -73,6 +83,9 @@ float3 GC_CookTorranceSpecular(float3 l, float3 v, float3 n, float3 F0, float al
     */
 
     float G2 = ImplicitG(n, v, l);
+    /*
+    float G2 = CTG(n,v,h, l);
+    */
 
     return (F * G2 * D)/ (4 * dot(n, l) * dot(n, v));
 }

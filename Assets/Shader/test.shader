@@ -3,7 +3,7 @@ Shader "GC/Test"
     Properties
     {
         _BaseMap("BaseMap", 2D) = "white"{}
-        _Roughness("Roughness", range(0, 1)) = 1 
+        _Roughness("Roughness", Range(0, 1)) = 1 
         _F0("F0", Range(0, 1)) = 0.028 //skin F0, from RTR 4rd P322
     }
 
