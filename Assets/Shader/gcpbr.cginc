@@ -74,7 +74,7 @@ float3 GC_CookTorranceSpecular(float3 l, float3 v, float3 n, float3 F0, float al
 
     float G2 = ImplicitG(n, v, l);
 
-    return (F * G2 * D)/ (4 * abs(dot(n, l)) * abs(dot(n, v)));
+    return (F * G2 * D)/ (4 * dot(n, l) * dot(n, v));
 }
 
 
