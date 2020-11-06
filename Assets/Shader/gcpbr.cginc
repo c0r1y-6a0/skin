@@ -8,12 +8,17 @@ float GC_BlinnPhongSpecular(float3 v, float3 l, float3 n)
     return saturate(dot(normalize(v + l), normalize(n)));
 }
 
-//-----------------pbr-------------
-
 //the schlick approximation of Fresnel Function
 float GC_PBR_FresnelSchlick(float cosTheta, float F0)
 {
-    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+    return F0 + (1.0 - F0) * pow(1.0 - max(cosTheta, 0), 5.0);
+}
+
+float fresnelReflectance( float cosTheta, float F0 )
+{
+  	float base = 1.0 - cosTheta;
+  	float exponential = pow( base, 5.0 );
+  	return exponential + F0 * ( 1.0 - exponential );
 }
 
 float BlinnPhongNDF(float alpha_p, float cos)
@@ -46,7 +51,8 @@ float BeckmannLambda(float a)
 
 float SmithG1(float3 m, float v, float lambda)
 {
-    return max(0, dot(m, v)) / (1 + lambda);
+    float mv = dot(m, v);
+    return step(0, dot(m, v)) / (1 + lambda);
 }
 
 float SmithG2(float3 l, float3 v, float3 m, float lambda)
@@ -69,40 +75,51 @@ float CTG(float3 n, float3 v, float3 h, float3 l)
     float val1 = min(1, (2 * nh * dot(n, v))/(vh));
     return min(val1, (2 * nh * dot(n, l)) / (vh));
 }
+
+sampler2D _KSLut;
 //Kelemen/Szirmay-Kalos Specular
 //formular: 
 // DF/dot(h, h), no geometry function, h is unnormalized half vector
-float GC_KS(float3 l, float3 v, float3 n, float F0, float alpha, float specular_brighness)
+float GC_KSSpecular(float3 l, float3 v, float3 n, float F0, float alpha, float specular_brighness)
 {
-    float h = l + v;
-    float normalizedH = normalize(h);
-    float nh = dot(n, h);
+    float nl = dot(n, l);
+
+    float3 h = l + v;
+    float3 normalizedH = normalize(h);
+    float nh = dot(n, normalizedH);
+    float D = pow( 2.0*tex2D(_KSLut,float2(nh,alpha)), 10.0 );    
 
     float F = GC_PBR_FresnelSchlick(dot(normalizedH, l), F0);
-    float D = 1.0;
-
-    float ks = (D * F / dot(h, h)) * nh * specular_brighness;
-    return lerp(ks, 0, step(0, nh));
+    float ks = max((D * F / dot(h, h)), 0);
+    float val = ks * nl * specular_brighness;
+    return lerp(0, val, step(0, nl));
 }
 
 float GC_CookTorranceSpecular(float3 l, float3 v, float3 n, float F0, float alpha_b)
 {
     float3 h = normalize(l + v);
-    float F = GC_PBR_FresnelSchlick(dot(h, l), F0);
-    float D = BeckmannNDF(alpha_b, dot(n, h));
 
-    /*
+    float F = GC_PBR_FresnelSchlick(dot(h, l), F0);
+
+    float D = 1.0;
+    #if _D_BLINNPHONG
+    D = BlinnPhongNDF(alpha_b, dot(n, h));
+    #elif _D_BECKMANN
+    D = BeckmannNDF(alpha_b, dot(n, h));
+    #elif _D_CGX
+    //TODO:
+    #endif
+
+    float G = 1.0;
+    #if _G_IMPLICIT
+    G = ImplicitG(n, v, l);
+    #elif _G_SMITH
     float a = Beckmann_a(n, v, alpha_b);
     float lambda = BeckmannLambda(a);
-    float G2 = SmithG2(l, v, h, lambda);
-    */
+    G = SmithG2(l, v, h, lambda);
+    #endif
 
-    float G2 = ImplicitG(n, v, l);
-    /*
-    float G2 = CTG(n,v,h, l);
-    */
-
-    return (F * G2 * D)/ (4 * dot(n, l) * dot(n, v));
+    return (F * G * D)/ (4 * dot(n, l) * dot(n, v));
 }
 
 
