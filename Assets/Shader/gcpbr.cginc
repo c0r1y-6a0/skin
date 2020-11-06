@@ -11,7 +11,7 @@ float GC_BlinnPhongSpecular(float3 v, float3 l, float3 n)
 //-----------------pbr-------------
 
 //the schlick approximation of Fresnel Function
-float3 GC_PBR_FresnelSchlick(float cosTheta, float3 F0)
+float GC_PBR_FresnelSchlick(float cosTheta, float F0)
 {
     return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
 }
@@ -69,11 +69,26 @@ float CTG(float3 n, float3 v, float3 h, float3 l)
     float val1 = min(1, (2 * nh * dot(n, v))/(vh));
     return min(val1, (2 * nh * dot(n, l)) / (vh));
 }
+//Kelemen/Szirmay-Kalos Specular
+//formular: 
+// DF/dot(h, h), no geometry function, h is unnormalized half vector
+float GC_KS(float3 l, float3 v, float3 n, float F0, float alpha, float specular_brighness)
+{
+    float h = l + v;
+    float normalizedH = normalize(h);
+    float nh = dot(n, h);
 
-float3 GC_CookTorranceSpecular(float3 l, float3 v, float3 n, float3 F0, float alpha_b)
+    float F = GC_PBR_FresnelSchlick(dot(normalizedH, l), F0);
+    float D = 1.0;
+
+    float ks = (D * F / dot(h, h)) * nh * specular_brighness;
+    return lerp(ks, 0, step(0, nh));
+}
+
+float GC_CookTorranceSpecular(float3 l, float3 v, float3 n, float F0, float alpha_b)
 {
     float3 h = normalize(l + v);
-    float3 F = GC_PBR_FresnelSchlick(dot(h, l), F0);
+    float F = GC_PBR_FresnelSchlick(dot(h, l), F0);
     float D = BeckmannNDF(alpha_b, dot(n, h));
 
     /*

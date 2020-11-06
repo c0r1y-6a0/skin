@@ -59,8 +59,9 @@ Shader "GC/Test"
                 float3 n = normalize(i.worldNormal.xyz);
                 //float co = GC_BlinnPhongSpecular(viewDir, lightDir, n);
                 //float co = GC_PhongSpecular(viewDir, lightDir, i.worldNormal.xyz);
-                float co = fixed4(GC_CookTorranceSpecular(lightDir, viewDir, n, _F0, _Roughness), 1.0);
-                return color * co;
+
+                float co = GC_CookTorranceSpecular(lightDir, viewDir, n, _F0, _Roughness);
+                return color * fixed4(co, co, co, 1.0);
             }
             ENDCG
         }
