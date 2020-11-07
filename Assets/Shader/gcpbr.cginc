@@ -46,19 +46,17 @@ float Beckmann_a(float3 n, float3 s, float roughness)
 float BeckmannLambda(float a)
 {
     float v = (1 - 1.259*a + 0.396*pow(a, 2))/(3.535*a+2.181*pow(a, 2));
-    return lerp(v, 0, step(1.6, a));
+    return lerp(0, v, step(1.6, a));
 }
 
 float SmithG1(float3 m, float v, float lambda)
 {
-    float mv = dot(m, v);
     return step(0, dot(m, v)) / (1 + lambda);
 }
 
-float SmithG2(float3 l, float3 v, float3 m, float lambda)
+float SmithG2(float3 l, float3 v, float3 m, float lambda_v, float lambda_l)
 {
-    return dot(m, v);
-    //return SmithG1(l, m, lambda) * SmithG1(v, m, lambda);
+    return (step(0, dot(m, v)) * step(0, dot(m, l)))/(1 + lambda_v + lambda_l);
 }
 
 //implicit geometry function
@@ -114,9 +112,11 @@ float GC_CookTorranceSpecular(float3 l, float3 v, float3 n, float F0, float alph
     #if _G_IMPLICIT
     G = ImplicitG(n, v, l);
     #elif _G_SMITH
-    float a = Beckmann_a(n, v, alpha_b);
-    float lambda = BeckmannLambda(a);
-    G = SmithG2(l, v, h, lambda);
+    float a_l = Beckmann_a(n, l, alpha_b);
+    float lambda_l = BeckmannLambda(a_l);
+    float a_v = Beckmann_a(n, v, alpha_b);
+    float lambda_v = BeckmannLambda(a_v);
+    G = SmithG2(l, v, h, lambda_v, lambda_l);
     #endif
 
     return (F * G * D)/ (4 * dot(n, l) * dot(n, v));
