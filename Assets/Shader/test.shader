@@ -9,9 +9,13 @@ Shader "GC/Test"
         _KSLut("KSLut", 2D) = "white"{}
         _KSBrightness("KSBrightness", float) = 1
 
-        [Space(30)]
+        _DiffusionProfileLUT("PreIntegrated Diffusion Profile LUT", 2D) = "white"{}
+        _ScatterColor("Scatter Color", Color) = (1, 1, 1, 1)
+        _TuneCurvature("Tune Curvature", Range(0.001, 0.1)) = 1.0
 
-        [Toggle] _Specular_Grayscale("Specular Gray Scale", float) = 0
+        [Space(50)]
+
+        [KeywordEnum(ALL, SpecularColorOnly, SpecularGrayScaleOnly, ScatterOnly)] _LightMode("Lighting Mode", float) = 0
 
         [KeywordEnum(Phong, BlinnPhong, PBR)] _Specular("Specular Mode", float) = 0
         [KeywordEnum(CookTorrance, KelemenSzirmayKalos)] _BRDF("BRDF formular", float) = 0
@@ -28,7 +32,7 @@ Shader "GC/Test"
         {
             CGPROGRAM
 
-            #pragma shader_feature _SPECULAR_GRAYSCALE_ON
+            #pragma multi_compile _LIGHTMODE_ALL _LIGHTMODE_SPECULARCOLORONLY  _LIGHTMODE_SPECULARGRAYSCALEONLY  _LIGHTMODE_SCATTERONLY
             #pragma multi_compile _SPECULAR_PHONG _SPECULAR_BLINNPHONG _SPECULAR_PBR
             #pragma multi_compile _BRDF_COOKTORRANCE _BRDF_KELEMENSZIRMAYKALOS
             #pragma multi_compile _D_BLINNPHONG _D_BECKMANN _D_CGX
@@ -58,6 +62,9 @@ Shader "GC/Test"
 
             float _KSBrightness;
 
+            float3 _ScatterColor;
+            float _TuneCurvature;
+
             #include "UnityCG.cginc"
             #include "gcpbr.cginc"
 
@@ -73,7 +80,7 @@ Shader "GC/Test"
 
             fixed4 frag(v2f i):SV_TARGET
             {
-                fixed4 color = tex2D(_BaseMap, i.uv);
+                fixed4 albedo = tex2D(_BaseMap, i.uv);
                 float3 lightDir = normalize(UnityWorldSpaceLightDir(i.worldPos.xyz));
                 float3 viewDir = normalize(UnityWorldSpaceViewDir(i.worldPos.xyz));
                 float3 n = normalize(i.worldNormal.xyz);
@@ -92,11 +99,18 @@ Shader "GC/Test"
                     #endif
                 #endif
 
-                #if _SPECULAR_GRAYSCALE_ON
-                    return fixed4(specular, specular, specular, 1.0);
-                #else
-                    return color * fixed4(specular, specular, specular, 1.0);
+                float3 scatter = GC_PreIntegratedDiffusionProfileScattering(n, i.worldPos.xyz, lightDir, _TuneCurvature) * _ScatterColor * albedo;
+
+                #if _LIGHTMODE_ALL
+                return fixed4(albedo * specular + scatter, 1.0);
+                #elif _LIGHTMODE_SCATTERONLY
+                return fixed4(scatter, 1.0);
+                #elif _LIGHTMODE_SPECULARCOLORONLY
+                return albedo * specular;
+                #elif _LIGHTMODE_SPECULARGRAYSCALEONLY
+                return fixed4(specular, specular, specular, 1.0);
                 #endif
+
             }
             ENDCG
         }

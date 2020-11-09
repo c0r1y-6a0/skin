@@ -1,3 +1,6 @@
+
+#include "UnityLightingCommon.cginc"
+
 float GC_PhongSpecular(float3 v, float3 l, float3 n)
 {
     return saturate(dot(normalize(reflect(-l, n)), v));
@@ -123,3 +126,14 @@ float GC_CookTorranceSpecular(float3 l, float3 v, float3 n, float F0, float alph
 }
 
 
+
+sampler2D _DiffusionProfileLUT;
+float3 GC_PreIntegratedDiffusionProfileScattering(float3 normal, float3 worldPos, float3 lightDir, float TuneCurvature)
+{
+    fixed curvature = saturate(length(fwidth(normal)) / length(fwidth(worldPos))* TuneCurvature);
+    float nl = dot(normal, lightDir) * 0.5 + 0.5;
+    //return float3(curvature, curvature, curvature);
+    //return float3(nl, nl, nl);
+    return tex2D(_DiffusionProfileLUT, float2(nl, curvature)) * _LightColor0.rgb ;
+
+}

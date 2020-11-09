@@ -2,11 +2,12 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class KSLut: MonoBehaviour
+public class GenLut: MonoBehaviour
 {
     public int LutWidth;
     public int LutHeight;
     public Material Mat;
+    public string LutName;
 
     public void CreateKSLUT()
     {
@@ -16,7 +17,7 @@ public class KSLut: MonoBehaviour
         Graphics.Blit(null, rt, Mat);
         RenderTexture.active = rt;
         lutTex.ReadPixels(new Rect(0, 0, LutWidth, LutHeight), 0, 0, false);
-        System.IO.File.WriteAllBytes(Application.dataPath + "/Lut.png", lutTex.EncodeToPNG());
+        System.IO.File.WriteAllBytes(Application.dataPath + LutName + ".png", lutTex.EncodeToPNG());
     }
 
     public void Update()
