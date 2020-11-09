@@ -2,9 +2,11 @@ Shader "GC/Test"
 {
     Properties
     {
-        _BaseMap("BaseMap", 2D) = "white"{}
+        _Albedo("Albedo", 2D) = "white"{}
         _Roughness("Roughness", Range(0, 1)) = 1 
         _F0("F0", Range(0, 1)) = 0.028 //skin F0, from RTR 4rd P322
+
+        _NormalMap("NormalMap", 2D) = "white"{}
 
         _KSLut("KSLut", 2D) = "white"{}
         _KSBrightness("KSBrightness", float) = 1
@@ -15,6 +17,7 @@ Shader "GC/Test"
 
         [Space(50)]
 
+        [Toggle] _NormalBlur("Normal Blur", float) = 0
         [KeywordEnum(ALL, SpecularColorOnly, SpecularGrayScaleOnly, ScatterOnly)] _LightMode("Lighting Mode", float) = 0
 
         [KeywordEnum(Phong, BlinnPhong, PBR)] _Specular("Specular Mode", float) = 0
@@ -32,6 +35,8 @@ Shader "GC/Test"
         {
             CGPROGRAM
 
+            #pragma shader_feature _NORMALBLUR_ON
+
             #pragma multi_compile _LIGHTMODE_ALL _LIGHTMODE_SPECULARCOLORONLY  _LIGHTMODE_SPECULARGRAYSCALEONLY  _LIGHTMODE_SCATTERONLY
             #pragma multi_compile _SPECULAR_PHONG _SPECULAR_BLINNPHONG _SPECULAR_PBR
             #pragma multi_compile _BRDF_COOKTORRANCE _BRDF_KELEMENSZIRMAYKALOS
@@ -45,20 +50,24 @@ Shader "GC/Test"
             {
                 float4 pos:POSITION;
                 float3 normal: NORMAL;
+                float4 tangent : TANGENT;
                 float2 uv:TEXCOORD0;
             };
 
             struct v2f
             {
                 float2 uv:TEXCOORD0;
-                float4 worldNormal:TEXCOORD1;
+                float4 T2W0 :TEXCOORD1;
+                float4 T2W1 :TEXCOORD2;
+                float4 T2W2 :TEXCOORD3;
                 float4 clipPos:SV_POSITION;
-                float4 worldPos:TEXCOORD2;
             };
 
-            sampler2D _BaseMap;
+            sampler2D _Albedo;
             float _Roughness;
             float _F0;
+
+            sampler2D _NormalMap;
 
             float _KSBrightness;
 
@@ -73,17 +82,30 @@ Shader "GC/Test"
                 v2f o;
                 o.clipPos = UnityObjectToClipPos(v.pos);
                 o.uv = v.uv;
-                o.worldNormal.xyz = UnityObjectToWorldNormal(v.normal);
-                o.worldPos = mul(unity_ObjectToWorld, v.pos);
+                float3 worldNormal = UnityObjectToWorldNormal(v.normal);
+                float3 worldTangent = UnityObjectToWorldDir(v.tangent);
+                float3 worldBitangent = cross(worldNormal ,worldTangent) * v.tangent.w;
+
+                float3 worldPos = mul(unity_ObjectToWorld, v.pos);
+                o.T2W0 = float4 (worldTangent.x,worldBitangent.x,worldNormal.x,worldPos.x);
+                o.T2W1 = float4 (worldTangent.y,worldBitangent.y,worldNormal.y,worldPos.y);
+                o.T2W2 = float4 (worldTangent.z,worldBitangent.z,worldNormal.z,worldPos.z);
                 return o;
             }
 
             fixed4 frag(v2f i):SV_TARGET
             {
-                fixed4 albedo = tex2D(_BaseMap, i.uv);
-                float3 lightDir = normalize(UnityWorldSpaceLightDir(i.worldPos.xyz));
-                float3 viewDir = normalize(UnityWorldSpaceViewDir(i.worldPos.xyz));
-                float3 n = normalize(i.worldNormal.xyz);
+                float3 n = normalize(float3( i.T2W0.z, i.T2W1.z, i.T2W2.z));
+                float3 worldPos = float3(i.T2W0.w, i.T2W1.w, i.T2W2.w);
+
+                fixed4 albedo = tex2D(_Albedo, i.uv);
+                float3 lightDir = normalize(UnityWorldSpaceLightDir(worldPos));
+                float3 viewDir = normalize(UnityWorldSpaceViewDir(worldPos));
+
+                fixed3 tangetSpaceNormal = UnpackNormal(tex2D(_NormalMap,i.uv));
+                fixed3 worldNormalHigh = normalize(float3( dot(i.T2W0.xyz,tangetSpaceNormal),
+                                                    dot(i.T2W1.xyz,tangetSpaceNormal),
+                                                    dot(i.T2W2.xyz,tangetSpaceNormal)));
 
                 float specular = 1.0;
 
@@ -99,7 +121,7 @@ Shader "GC/Test"
                     #endif
                 #endif
 
-                float3 scatter = GC_PreIntegratedDiffusionProfileScattering(n, i.worldPos.xyz, lightDir, _TuneCurvature) * _ScatterColor * albedo;
+                float3 scatter = GC_PreIntegratedDiffusionProfileScattering(n, worldNormalHigh, worldPos.xyz, lightDir, _TuneCurvature) * _ScatterColor * albedo;
 
                 #if _LIGHTMODE_ALL
                 return fixed4(albedo * specular + scatter, 1.0);
@@ -110,7 +132,6 @@ Shader "GC/Test"
                 #elif _LIGHTMODE_SPECULARGRAYSCALEONLY
                 return fixed4(specular, specular, specular, 1.0);
                 #endif
-
             }
             ENDCG
         }

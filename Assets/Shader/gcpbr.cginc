@@ -125,15 +125,28 @@ float GC_CookTorranceSpecular(float3 l, float3 v, float3 n, float F0, float alph
     return (F * G * D)/ (4 * dot(n, l) * dot(n, v));
 }
 
-
-
 sampler2D _DiffusionProfileLUT;
-float3 GC_PreIntegratedDiffusionProfileScattering(float3 normal, float3 worldPos, float3 lightDir, float TuneCurvature)
+float3 GC_PreIntegratedDiffusionProfileScattering(float3 normal_low, float3 normal_high, float3 worldPos, float3 lightDir, float TuneCurvature)
 {
-    fixed curvature = saturate(length(fwidth(normal)) / length(fwidth(worldPos))* TuneCurvature);
-    float nl = dot(normal, lightDir) * 0.5 + 0.5;
-    //return float3(curvature, curvature, curvature);
-    //return float3(nl, nl, nl);
-    return tex2D(_DiffusionProfileLUT, float2(nl, curvature)) * _LightColor0.rgb ;
+    fixed curvature = saturate(length(fwidth(normal_low)) / length(fwidth(worldPos))* TuneCurvature);
+#if _NORMALBLUR_ON
+    float nl = dot(normal_low, lightDir) ;
+    float3 BlurFactor = saturate(1.0 - nl);
+    BlurFactor *= BlurFactor;
 
+    float3 gN  = lerp(normal_high, normal_low, 0.3 + 0.7 * BlurFactor);
+    float3 bN = lerp(normal_high, normal_low, BlurFactor);
+
+    float3 NoL = float3(nl, dot(gN, lightDir), dot(bN, lightDir));
+    float3 lookup = NoL * 0.5 + 0.5;
+
+    float3 diffuse;
+    diffuse.r = tex2D(_DiffusionProfileLUT, float2(lookup.r, curvature)).r;
+    diffuse.g = tex2D(_DiffusionProfileLUT, float2(lookup.g, curvature)).g;
+    diffuse.b = tex2D(_DiffusionProfileLUT, float2(lookup.b, curvature)).b;
+    diffuse *= _LightColor0.rgb;
+    return diffuse;
+#else
+    return tex2D(_DiffusionProfileLUT, float2(dot(normal_low, lightDir) * 0.5 + 0.5, curvature)) * _LightColor0.rgb;
+#endif
 }
