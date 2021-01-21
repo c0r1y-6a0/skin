@@ -110,14 +110,14 @@ Shader "GC/Test"
                 float specular = 1.0;
 
                 #if _SPECULAR_PHONG
-                specular = GC_PhongSpecular(viewDir, lightDir, n);
+                specular = GC_PhongSpecular(viewDir, lightDir, worldNormalHigh);
                 #elif _SPECULAR_BLINNPHONG
-                specular = GC_BlinnPhongSpecular(viewDir, lightDir, n);
+                specular = GC_BlinnPhongSpecular(viewDir, lightDir, worldNormalHigh);
                 #elif _SPECULAR_PBR
                     #if _BRDF_KELEMENSZIRMAYKALOS
-                    specular = GC_KSSpecular(lightDir, viewDir, n, _F0, _Roughness, _KSBrightness);
+                    specular = GC_KSSpecular(lightDir, viewDir, worldNormalHigh, _F0, _Roughness, _KSBrightness);
                     #elif _BRDF_COOKTORRANCE
-                    specular = GC_CookTorranceSpecular(lightDir, viewDir, n, _F0, _Roughness);
+                    specular = GC_CookTorranceSpecular(lightDir, viewDir, worldNormalHigh, _F0, _Roughness);
                     #endif
                 #endif
 
