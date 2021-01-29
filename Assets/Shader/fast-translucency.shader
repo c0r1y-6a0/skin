@@ -120,7 +120,7 @@
             {
                 float4 vertex : SV_POSITION;
                 float3 normal : VAR_NORMAL;
-                float3 worldPos : VAR_WORLD_POS;
+                float3 viewPos : VAR_WORLD_POS;
             };
 
             v2f vert(appdata_full i)
@@ -128,14 +128,14 @@
                 v2f v;
                 v.vertex = UnityObjectToClipPos(i.vertex);
                 v.normal = UnityObjectToWorldNormal(i.normal);
-                v.worldPos = mul(unity_ObjectToWorld, i.vertex);
+                v.viewPos = UnityObjectToViewPos(i.vertex);
                 return v;
             }
 
             float4 frag(v2f i) : SV_Target
             {
                 float3 normal = normalize(i.normal);
-                float3 viewDir = normalize(UnityWorldToViewPos(i.worldPos));
+                float3 viewDir = normalize(i.viewPos);
                 float3 H = normalize(_WorldSpaceLightPos0 + normal* _Translucency_Distortion);
                 H = mul(UNITY_MATRIX_V, float4(H, 0)).xyz;
                 float vh = dot(viewDir, H);
