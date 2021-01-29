@@ -1,48 +1,60 @@
-
-//预计算diffusion profile
-Shader "GC/DiffusionProfile"
+Shader "GC/lut"
 {
     Properties
     {
+        _LutTex("LUT", 2D) = "white"{}
+        _Tint("Tint", Color) = (1,1,1,1)
+        _Cur("Radius", Float) = 1.0
     }
-
     SubShader
     {
-        Tags { "RenderType"="Opaque" }
+        Tags { "RenderType" = "Opaque" }
+        LOD 100
 
         Pass
         {
             CGPROGRAM
-
             #pragma vertex vert
             #pragma fragment frag
 
             #include "UnityCG.cginc"
-            #include "gcpbr.cginc"
+            #include "UnityStandardBRDF.cginc"
+            #include "AutoLight.cginc"		
+
+            sampler _LutTex;
+            float _Cur;
+            float3 _Tint;
 
             struct appdata
             {
-                float4 pos:POSITION;
-                float2 uv:TEXCOORD0;
+                float4 vertex : POSITION;
+                float3 normal : NORMAL;
             };
 
             struct v2f
             {
-                float2 uv:TEXCOORD0;
-                float4 clipPos:SV_POSITION;
+                float4 vertex : SV_POSITION;
+                float3 worldNormal : VAR_NORMAL;
             };
 
-            v2f vert(appdata v)
+            v2f vert (appdata v)
             {
                 v2f o;
-                o.clipPos = UnityObjectToClipPos(v.pos);
-                o.uv = v.uv;
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                o.worldNormal = mul(unity_ObjectToWorld,v.vertex);
                 return o;
+            }
+
+            float4 sss_color(float nl)
+            {
+                nl = nl * 0.5 + 0.5;
+                float curvature = 1/_Cur;
+                return tex2D(_LutTex, float2(nl, curvature));
             }
 
             float Gaussian(float v, float r)
             {
-                return exp( -(r * r) / (2 * v)) / sqrt(2.0 * UNITY_PI * v);
+                return exp( -(r * r) / (2.0 * v)) / sqrt(2.0 * UNITY_PI * v);
             }
 
             float3 Scatter(float r)
@@ -76,12 +88,13 @@ Shader "GC/DiffusionProfile"
                 return totalLight / totalWeights;
             }
 
-
-            float4 frag(v2f i):SV_TARGET
+            fixed3 frag(v2f i) : SV_Target
             {
-                float3 r = 1.0 / (i.uv.y + 0.0001);
-                float3 color = IntegrateDiffuseScatteringOnRing(lerp(-1, 1, i.uv.x), r);
-                return float4(color, 1);
+                float3 worldNormal = i.worldNormal;
+
+                float NdotL = saturate(dot(worldNormal, _WorldSpaceLightPos0));
+                //return sss_color(NdotL);
+                return IntegrateDiffuseScatteringOnRing(NdotL,  _Cur) * _Tint;
             }
             ENDCG
         }

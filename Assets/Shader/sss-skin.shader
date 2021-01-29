@@ -1,4 +1,4 @@
-Shader "SSS/Skin_Pre" 
+Shader "GC/Skin_Pre" 
 {
     Properties 
     {         

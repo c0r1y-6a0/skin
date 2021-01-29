@@ -13,7 +13,7 @@ public class GenLut: MonoBehaviour
     {
         Texture2D lutTex = new Texture2D(LutWidth, LutHeight, TextureFormat.ARGB32, false);
 
-        RenderTexture rt = new RenderTexture(LutWidth, LutHeight, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+        RenderTexture rt = new RenderTexture(LutWidth, LutHeight, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
         Graphics.Blit(null, rt, Mat);
         RenderTexture.active = rt;
         lutTex.ReadPixels(new Rect(0, 0, LutWidth, LutHeight), 0, 0, false);
