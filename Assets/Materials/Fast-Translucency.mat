@@ -72,9 +72,9 @@ Material:
     - _SrcBlend: 1
     - _TT: 0
     - _TT2: 0
-    - _Translucency_Distortion: 0.981
-    - _Translucency_Power: 0.937
-    - _Translucency_Scale: 1.76
+    - _Translucency_Distortion: 0.968
+    - _Translucency_Power: 0.409
+    - _Translucency_Scale: 0.94
     - _UVSec: 0
     - _ZWrite: 1
     m_Colors:

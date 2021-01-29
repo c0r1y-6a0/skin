@@ -132,6 +132,7 @@
 				float4 specular = float4(specularColor * FresnelTerm(_SpecularColor, LdotH) * _SpecularScale, 1);
 
                 float4 directDiffuse = sss_color(i, NdotL);
+                //return directDiffuse;
                 float4 diffuseColor = albedo.rgba;
 
                 fixed attenuation = LIGHT_ATTENUATION(i);//投影
