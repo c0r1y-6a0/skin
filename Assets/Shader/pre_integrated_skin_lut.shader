@@ -55,6 +55,30 @@ Shader "GC/DiffusionProfile"
                 + Gaussian(7.4100 * 1.414, r) * float3(0.078, 0.000, 0.000);
             }
 
+
+            float3 Tonemap(float3 x)
+            {
+                float A = 0.15;
+                float B = 0.50;
+                float C = 0.10;
+                float D = 0.20;
+                float E = 0.02;
+                float F = 0.30;
+                float W = 11.2;
+
+                return ((x * ( A * x + C * B) + D * E) / (x * (A * x + B) + D * F)) - E/F;
+            }
+
+            float3 ACESToneMapping(float3 x)
+            {
+                float a = 2.51f;
+                float b = 0.03f;
+                float c = 2.43f;
+                float d = 0.59f;
+                float e = 0.14f;
+                return saturate((x*(a*x+b))/(x*(c*x+d)+e));
+            }
+
             float3 IntegrateDiffuseScatteringOnRing(float cosTheta, float skinRadius)
             {
                 float theta = acos(cosTheta);
@@ -73,7 +97,8 @@ Shader "GC/DiffusionProfile"
                     totalLight += diffuse * weights;
                     a += 0.01;
                 }
-                return totalLight / totalWeights;
+                float3 rgb = ACESToneMapping(totalLight/totalWeights);
+                return rgb;
             }
 
 
